@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}zero-trace · graph · #{{ profile.id }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Service topology <span class="muted">(profile #{{ profile.id }}, {{ profile.project.split('/')[-1] }})</span></h1>
+  <p>
+    <a href="/flows?profile_id={{ profile.id }}">flow table</a> ·
+    <a href="/profiles/{{ profile.id }}">profile detail</a> ·
+    <a href="/">dashboard</a>
+  </p>
+  <div id="graph" class="graph" data-profile="{{ profile.id }}">
+    <p class="muted">Loading topology…</p>
+  </div>
+  <p class="muted small">Node stroke color marks external hosts. Edge label: <code>proto/port (packets)</code>.</p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>window.renderGraph({{ profile.id }});</script>
+{% endblock %}

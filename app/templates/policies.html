@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}zero-trace · policies · #{{ profile.id }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Generated policies <span class="muted">(profile #{{ profile.id }}, {{ profile.project.split('/')[-1] }})</span></h1>
+  <p>
+    Edit <code>zero-trace.policy.yaml</code> to revoke a relationship (e.g. delete the
+    <code>rogue -> db</code> rule), then re-run the generator.
+    <a href="/api/policies/{{ profile.id }}/zero-trace.policy.yaml">download policy</a> ·
+    <a href="/api/policies/{{ profile.id }}/compose.hardened.yml">download hardened compose</a> ·
+    <a href="/api/policies/{{ profile.id }}/iptables.hardened.sh">download iptables</a>
+  </p>
+</section>
+
+<section class="card">
+  <h2>zero-trace.policy.yaml</h2>
+  <pre class="code">{{ policy }}</pre>
+</section>
+
+<section class="card">
+  <h2>compose.hardened.yml</h2>
+  <p class="muted small">One private bridge per allowed peer pair; DNS can no longer
+  resolve unauthorized peers. Services with published ports also join the
+  non-internal <code>zt_ingress</code> network.</p>
+  <pre class="code">{{ compose }}</pre>
+</section>
+
+<section class="card">
+  <h2>iptables.hardened.sh</h2>
+  <p class="muted small">DOCKER-USER chain allowlist, then default-drop the app subnet.
+  Container IPs are resolved at apply time.</p>
+  <pre class="code">{{ iptables }}</pre>
+</section>
+{% endblock %}

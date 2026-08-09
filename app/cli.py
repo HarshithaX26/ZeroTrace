@@ -6,6 +6,8 @@ Commands are stubs wired into ``app.capture``, ``app.engine`` and
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from app import __version__
@@ -50,29 +52,87 @@ def profile(
         help="Capture window in seconds.",
     ),
 ) -> None:
-    """Run a passive capture against a running compose stack and ingest flows.
+    """Run a passive capture against a running compose stack and ingest flows."""
+    from app.capture import sidecar
+    from app.engine.graph import graph_edges
+    from app.service import run_profile
 
-    Delegates to ``app.capture.sidecar`` (compose override injection),
-    ``app.capture.collector`` and ``app.engine``.
-    """
-    # TODO(build step 2/3): sidecar override + collect + parse + resolve.
-    raise typer.Exit("profile: capture pipeline not implemented yet")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    def report(stage: str, message: str) -> None:
+        typer.echo(f"[{stage:<9}] {message}", err=True)
+
+    if not sidecar.compose_files(project):
+        raise typer.BadParameter(f"No compose file in project: {project}")
+
+    edges = run_profile(project, duration=duration, on_event=report)
+
+    typer.echo("\nDetected reachability:")
+    for e in graph_edges(edges):
+        typer.echo(f"  {e.src} -> {e.dst}  tcp/{e.dport:<5} {e.packets:>6} pkts")
+    typer.echo(f"\n{len(edges)} edge(s) detected.")
 
 
 @app.command()
 def generate(
-    profile_id: str = typer.Option(
-        ...,
+    profile_id: int | None = typer.Option(
+        None,
         "--profile",
-        help="Profile id to generate policies from.",
+        help="Profile id to generate policies from (default: latest done).",
+    ),
+    out: str = typer.Option(
+        None,
+        "--out",
+        help="Output directory (default: <data>/policies/<project>).",
     ),
 ) -> None:
-    """Generate policy artifacts (zero-trace.policy.yaml, hardened compose, iptables).
+    """Generate policy artifacts from a previously captured profile."""
+    from sqlmodel import select
 
-    Delegates to the ``app.generators`` package.
-    """
-    # TODO(build step 4): emit policy/compose/iptables.
-    raise typer.Exit("generate: policy generators not implemented yet")
+    from app.db import new_session
+    from app.engine.graph import Edge
+    from app.generators import generate_all
+    from app.models import FlowEdge, Profile
+
+    with new_session() as session:
+        if profile_id is not None:
+            profile = session.get(Profile, int(profile_id))
+            if profile is None:
+                raise typer.BadParameter(f"no profile #{profile_id}")
+        else:
+            profile = session.exec(
+                select(Profile)
+                .where(Profile.status == "done")
+                .order_by(Profile.id.desc())
+            ).first()
+        if profile is None:
+            typer.echo(
+                "No completed profile found; run 'zero-trace profile' first.", err=True
+            )
+            raise typer.Exit(1)
+
+        rows = session.exec(
+            select(FlowEdge)
+            .where(FlowEdge.profile_id == profile.id)
+            .order_by(FlowEdge.id)
+        ).all()
+        edges = [Edge(src=r.src, dst=r.dst, proto=r.proto, dport=r.dport) for r in rows]
+        if not edges:
+            typer.echo(f"Profile #{profile.id} has no edges.", err=True)
+            raise typer.Exit(1)
+
+    out_dir = Path(out) if out else DATA_DIR / "policies" / Path(profile.project).name
+    paths = generate_all(
+        profile.project,
+        edges,
+        out_dir=out_dir,
+        profile_id=profile.id,
+        project_compose=None,
+    )
+
+    typer.echo(f"Profile #{profile.id} -> {len(edges)} edge(s)")
+    for artifact, path in paths.items():
+        typer.echo(f"  {artifact:<8} {path}")
 
 
 @app.command()
@@ -81,8 +141,9 @@ def serve_web(
     port: int = typer.Option(8000, help="Bind port."),
 ) -> None:
     """Start the FastAPI web dashboard."""
-    # TODO(build step 5): uvicorn.run("app.main:app", ...)
-    raise typer.Exit("serve: web dashboard not implemented yet")
+    import uvicorn
+
+    uvicorn.run("app.main:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":
