@@ -1,0 +1,57 @@
+name: zt-env
+
+services:
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - auth
+      - orders
+    networks: [appnet]
+
+  auth:
+    build: ./services/api
+    environment:
+      SERVICE_ROLE: auth
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/shop
+    depends_on:
+      - db
+    networks: [appnet]
+
+  orders:
+    build: ./services/api
+    environment:
+      SERVICE_ROLE: orders
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/shop
+    depends_on:
+      - db
+    networks: [appnet]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [appnet]
+
+  # Intentionally unauthorized: talks to the database directly, bypassing the
+  # application tier. zero-trace's generated policy should block it.
+  rogue:
+    build: ./services/rogue
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/shop
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks: [appnet]
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  pgdata:

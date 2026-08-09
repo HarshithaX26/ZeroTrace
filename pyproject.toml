@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zero-trace"
+version = "0.1.0"
+description = "Microservice zero-trust network policy generator for Docker Compose apps"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "jinja2",
+    "scapy",
+    "docker",
+    "pyyaml",
+    "sqlmodel",
+    "pydantic",
+    "httpx",
+    "typer",
+]
+
+[project.scripts]
+zero-trace = "app.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.uv]
+package = true
