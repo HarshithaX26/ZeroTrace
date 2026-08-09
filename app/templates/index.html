@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set profile = None %}
+{% block title %}zero-trace · dashboard{% endblock %}
+{% block content %}
+<section class="card hero">
+  <h1>Microservice Zero-Trust Policy Generator</h1>
+  <p>Profile a Docker Compose stack with passive per-service captures, then
+     derive least-privilege network segmentation.</p>
+
+  <form id="start-form" class="start-form" method="post" action="/api/profiles">
+    <label>Project
+      <input name="project" type="text" value="env" placeholder="path relative to workspace or absolute">
+    </label>
+    <label>Duration (s)
+      <input name="duration" type="number" min="10" max="600" value="45">
+    </label>
+    <button type="submit">Start profiling</button>
+  </form>
+  <p id="start-status" class="muted"></p>
+</section>
+
+<section class="card">
+  <h2>Profiles <span class="muted">({{ stats.count }} total · {{ stats.done }} done)</span></h2>
+  {% if profiles %}
+  <table class="table">
+    <thead>
+      <tr><th>#</th><th>Project</th><th>Status</th><th>Started</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in profiles %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.project.split('/')[-1] }}</td>
+        <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+        <td>{{ p.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>
+          <a href="/profiles/{{ p.id }}">detail</a> ·
+          <a href="/flows?profile_id={{ p.id }}">flows</a> ·
+          <a href="/graph/{{ p.id }}">graph</a> ·
+          <a href="/policies/{{ p.id }}">policies</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No profiles yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('start-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  const status = document.getElementById('start-status');
+  const body = new FormData(form);
+  try {
+    const res = await fetch('/api/profiles', { method: 'POST', body });
+    const { profile_id } = await res.json();
+    status.textContent = `started profile #${profile_id}, streaming…`;
+    window.location.href = `/profiles/${profile_id}`;
+  } catch (err) {
+    status.textContent = `failed: ${err}`;
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}
