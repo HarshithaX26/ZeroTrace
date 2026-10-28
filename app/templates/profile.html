@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}zero-trace · profile #{{ profile.id }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Profile #{{ profile.id }} <span class="muted">({{ profile.project.split('/')[-1] }})</span></h1>
+  <p>
+    <a href="/flows?profile_id={{ profile.id }}">flow table</a> ·
+    <a href="/graph/{{ profile.id }}">service graph</a> ·
+    <a href="/policies/{{ profile.id }}">generated policies</a> ·
+    <a href="/">back to dashboard</a>
+  </p>
+
+  <div class="progress">
+    <span id="badge" class="badge badge-{{ profile.status }}">{{ profile.status }}</span>
+    <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+  </div>
+
+  <p id="error" class="error" hidden></p>
+
+  <h2>Progress</h2>
+  <ul id="events" class="events">
+    {% for ev in profile.events_parsed %}
+    <li><span class="stage">{{ ev.stage }}</span> {{ ev.msg }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const PROFILE_ID = {{ profile.id }};
+window.startProfileFeed(PROFILE_ID);
+</script>
+{% endblock %}

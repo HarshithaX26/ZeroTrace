@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}zero-trace · flows · #{{ profile.id }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Detected flows <span class="muted">(profile #{{ profile.id }}, {{ profile.project.split('/')[-1] }})</span></h1>
+  <p>
+    <a href="/graph/{{ profile.id }}">service graph</a> ·
+    <a href="/profiles/{{ profile.id }}">profile detail</a> ·
+    <a href="/">dashboard</a>
+  </p>
+  {% if edges %}
+  <table class="table">
+    <thead>
+      <tr><th>Source</th><th>Destination</th><th>Proto</th><th>Port</th><th>Packets</th><th>Bytes</th></tr>
+    </thead>
+    <tbody>
+      {% for e in edges %}
+      <tr>
+        <td>{{ e.src }}</td>
+        <td>{{ e.dst }}</td>
+        <td>{{ e.proto }}</td>
+        <td>{{ e.dport or '—' }}</td>
+        <td>{{ e.packets }}</td>
+        <td>{{ e.bytes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No flows recorded yet — run a profile first.</p>
+  {% endif %}
+</section>
+{% endblock %}
